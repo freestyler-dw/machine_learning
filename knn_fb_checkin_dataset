@@ -1,0 +1,64 @@
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+import pandas as pd
+
+
+def cut_csv(file):
+    # original data set is too big, cut it based on x and y values
+    df = pd.read_csv(file)
+
+    # "x > 1.0 & x < 1.25 & y > 2.5 & y < 2.75" will reduce total rows from 29118021 to 17710
+    df = df.query("x > 1.0 & x < 1.25 & y > 2.5 & y < 2.75")
+    return df
+
+
+def get_time_features(df, time_column):
+    # transform time_column to DatetimeIndex format so that day, hour, weekday features can be easily extracted
+    time_value = pd.to_datetime(df[time_column], unit='s')
+    time_value = pd.DatetimeIndex(time_value)
+
+    # extract day, hour, weekday as features
+    df['day'] = time_value.day
+    df['hour'] = time_value.hour
+    df['weekday'] = time_value.weekday
+
+    # delete time feature, as it is no longer used
+    df = df.drop('time', axis=1)
+
+    return df
+
+
+def get_major_place(df, place_column):
+    # group by place_column and count to find major places
+    # after the group by, the index (first column, or row header) will be the place_id
+    # the successive columns will all turned to count
+    # thus we pick a random column - that is, row_id in this case - as a filter
+    # we have to reset index to move place_id to the non-index column
+    # finally we get all the place_id that satisfies the filter condition
+    place_count = df.groupby(place_column).count()
+    place_count = place_count[place_count.row_id > 3].reset_index()
+
+    # back to the original df, with all the place_id as a filter
+    df = df[df['place_id'].isin(place_count.place_id)]
+
+    return df
+
+if __name__ == '__main__':
+    file = r"f:\Python\Facebook V Predicting Check Ins\train.csv"
+    data = cut_csv(file)
+    data = get_time_features(data, 'time')
+    data = get_major_place(data, 'place_id')
+    target_data = data['place_id']
+    feature_data = data.drop(['place_id','row_id'], axis=1)
+    feat_train, feat_test, tar_train, tar_test = train_test_split(feature_data, target_data, test_size=0.25)
+
+    std = StandardScaler()
+    feat_train = std.fit_transform(feat_train)
+    feat_test = std.transform(feat_test)
+
+    knn = KNeighborsClassifier(n_neighbors=5)
+    knn.fit(feat_train, tar_train)
+    pred_test = knn.predict(feat_test)
+    score = knn.score(feat_test, tar_test)
+    print(score)
