@@ -1,0 +1,28 @@
+from sklearn.datasets import load_iris
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.neighbors import KNeighborsClassifier
+
+# load irs data set
+iris = load_iris()
+
+# separate iris data set
+x_train, x_test, y_train, y_test = train_test_split(iris.data, iris.target, test_size=0.25)
+
+# feature standardization
+std = StandardScaler()
+x_train = std.fit_transform(x_train)
+x_test = std.transform(x_test)
+
+# build KNN classifier
+knn = KNeighborsClassifier(n_neighbors=5)
+knn.fit(x_train, y_train)
+
+# calculate score / predict result
+score = knn.score(x_test, y_test)
+print(score)
+
+pred_test = knn.predict(x_test)
+print(pred_test)
+
+
